@@ -114,6 +114,7 @@ def power(a, b):
 
 
 class EWiseDiv(TensorOp):
+    #hello!
     """Op to element-wise divide two nodes."""
 
     def compute(self, a, b):
