@@ -220,12 +220,15 @@ class BroadcastTo(TensorOp):
         # a = 3x1
         ### BEGIN YOUR SOLUTION
         #raise NotImplementedError()
-        a = node.inputs[0]
-        num_broadcasted_dims = len(out_grad.shape) - len(a.shape)
-        # Sum along the added dimensions to get the gradient of the smaller array
-        #grad_a = summation(out_grad, tuple(range(num_broadcasted_dims)))
-        grad_a = array_api.ones_like(a.shape) * out_grad
-        return grad_a
+        grad_a = out_grad
+        output_shape = out_grad.shape
+        input_shape = node.inputs[0].shape
+        for _ in range(len(output_shape) - len(input_shape)):
+            grad_a = summation(grad_a, axes = 0)
+        for i, dimension in enumerate(input_shape):
+            if dimension == 1:
+                grad_a = summation(grad_a, axes = i)
+        return reshape(grad_a, input_shape)
         ### END YOUR SOLUTION
 
 
