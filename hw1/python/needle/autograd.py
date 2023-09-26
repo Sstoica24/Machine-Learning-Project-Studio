@@ -7,6 +7,10 @@ import numpy
 
 from needle import init
 
+#Topological sort: DFS (depth first search). You iterate through the tree depth wise,
+#going to each child starting from the right one. As you go back, you add the 
+#nodes to the visited list. 
+
 # needle version
 LAZY_MODE = False
 TENSOR_COUNTER = 0
@@ -393,14 +397,24 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     sort.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    topo_order = []
+    visited = []
+    topo_sort_dfs(node_list[0], visited, topo_order)
+    return topo_order
     ### END YOUR SOLUTION
 
 
 def topo_sort_dfs(node, visited, topo_order):
     """Post-order DFS"""
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    if node is None:
+        return topo_order
+    else:
+        if node not in visited:
+            visited.append(node)
+            topo_sort_dfs(node.inputs[0], visited, topo_order)  # left
+            topo_sort_dfs(node.inputs[1], visited, topo_order)  # right
+            topo_order.append(node) # root
     ### END YOUR SOLUTION
 
 
