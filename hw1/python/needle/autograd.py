@@ -1,5 +1,5 @@
 """Core data structures."""
-import needle
+import needle as ndl
 from .backend_numpy import Device, cpu, all_devices
 from typing import List, Optional, NamedTuple, Tuple, Union
 from collections import namedtuple
@@ -384,7 +384,13 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    for node in reverse_topo_order:
+        sum_of_partial_adjoints = ndl.summation(node_to_output_grads_list, axes=None)
+        for child_k in node.inputs:
+            operation = node.op
+            grad = operation.gradient(sum_of_partial_adjoints, child_k)
+            node_to_output_grads_list[child_k] = grad
+    return node_to_output_grads_list
     ### END YOUR SOLUTION
 
 
