@@ -1,5 +1,5 @@
 """Core data structures."""
-import needle as ndl
+import needle
 from .backend_numpy import Device, cpu, all_devices
 from typing import List, Optional, NamedTuple, Tuple, Union
 from collections import namedtuple
@@ -20,7 +20,6 @@ TENSOR_COUNTER = 0
 import numpy as array_api
 
 NDArray = numpy.ndarray
-
 
 class Op:
     """Operator definition."""
@@ -292,6 +291,7 @@ class Tensor(Value):
         return data.device
 
     def backward(self, out_grad=None):
+        # import pdb; pdb.set_trace()
         out_grad = (
             out_grad
             if out_grad
@@ -385,12 +385,19 @@ def compute_gradient_of_variables(output_tensor, out_grad):
 
     ### BEGIN YOUR SOLUTION
     for node in reverse_topo_order:
-        sum_of_partial_adjoints = ndl.summation(node_to_output_grads_list, axes=None)
-        for child_k in node.inputs:
-            operation = node.op
-            grad = operation.gradient(sum_of_partial_adjoints, child_k)
-            node_to_output_grads_list[child_k] = grad
-    return node_to_output_grads_list
+        # says that we need to store computer results ==> we write it to node.grad
+        # sum_node_list is the function they gave to easily sum nodes
+        node.grad = sum_node_list(node_to_output_grads_list[node])
+        operation = node.op
+        if operation is not None:
+            # grads we want to be a tuple, so we can iterate over it ==> we call gradient_as_tuple
+            # also, grad computer both gradients, so no need to iterate through inpputs and call grad on input[k]
+            grads = operation.gradient_as_tuple(node.grad, node) #3rd TEST FAILS
+            for child, grad in zip(node.inputs, grads): #this allows you to simultaneously iterate through node.inputs and grads
+                if child not in node_to_output_grads_list:
+                    node_to_output_grads_list[child] = [grad]
+                else:
+                    node_to_output_grads_list[child].append(grad)
     ### END YOUR SOLUTION
 
 

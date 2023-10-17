@@ -62,7 +62,7 @@ class MulScalar(TensorOp):
         return a * self.scalar
 
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return (out_grad * self.scalar,)
+        return out_grad * self.scalar
 
 
 def mul_scalar(a, scalar):
@@ -99,11 +99,6 @@ class EWisePow(TensorOp):
         return a**b
 
     def gradient(self, out_grad, node):
-        if not isinstance(node.inputs[0], NDArray) or not isinstance(
-            node.inputs[1], NDArray
-        ):
-            raise ValueError("Both inputs must be tensors (NDArray).")
-
         a, b = node.inputs[0], node.inputs[1]
         grad_a = out_grad * b * (a ** (b - 1))
         grad_b = out_grad * (a**b) * array_api.log(a.data)
@@ -114,7 +109,6 @@ def power(a, b):
 
 
 class EWiseDiv(TensorOp):
-    #hello!
     """Op to element-wise divide two nodes."""
 
     def compute(self, a, b):
@@ -241,25 +235,47 @@ class Summation(TensorOp):
         self.axes = axes
 
     def compute(self, a):
-        ### BEGIN YOUR SOLUTION
+        ### BEGIN YOUR SOLUTIONs
         return array_api.sum(a, self.axes)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
+        #manual implementation of what I had before
+        a = node.inputs[0]
+        grad_shape = list(out_grad.shape)
+        if self.axes == None:
+            axes = a.shape # input shape since we want to return tensor wuth same dim as input
+        else:
+            axes = self.axes
+        n = len(a.shape)
+        new_axes = []
+        # new_axes gives the axes that needs to be added to 
+        # current dim, such that the correct dimensions 
+        # are returned 
+        for x in axes:
+            if x >= 0: # if axis is 0 ==> just scalar value
+                new_axes.append(x)
+            else:
+                # gives correct dim
+                # example, if input tenor is (a,b,c) and you 
+                # want to sum of -2, then the result will be (a,c)
+                # but you need to return a 3 dimensional output
+                # ==> you need to add back the first dimension
+                # which is what (x = -2 + n = 3) is! (-2 + 3) = 1. 
+                new_axes.append(x + n) 
+        new_axes = sorted(new_axes)
+        #insert a one at the axis position that needs to be added
+        for axis in new_axes:
+            grad_shape.insert(axis, 1) #if grad_shape = [], then grad_shape = [1,] after even if axis = 5
         
-        # if 0 dimensional, then we need to reshape
-        # grad to be one dimensional, so it can
-        # be broadcaseted correctly.
-        # if self.axes is 0, then we need to 
-        # transpose (as expirementation showed)
-        # axes = 0 changed (5,4) to (4,1)
-        # so we needed to take the transpose.
-        if array_api.array(out_grad).ndim == 0:
-            out_grad = out_grad.reshape((-1,1))
-        if 0 in self.axes:
-            out_grad = array_api.transpose(out_grad)
-        return out_grad * array_api.ones_like(node.inputs[0])
+        # broadcast to input shape, so you garentee correct shape
+        # since currently all added axis positions will be 1, when
+        # input shape requirs different dims. 
+        print( "the gradient shape is", 
+            broadcast_to(reshape(out_grad, grad_shape), a.shape).shape
+        )
+        return broadcast_to(reshape(out_grad, grad_shape), a.shape)
         ### END YOUR SOLUTION
 
 
@@ -320,8 +336,8 @@ class Log(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        a = node.inputs
-        raise out_grad * 1/a
+        input, = node.inputs
+        return out_grad / input
         ### END YOUR SOLUTION
 
 
@@ -338,7 +354,7 @@ class Exp(TensorOp):
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0]
-        raise out_grad * array_api.exp(a)
+        return out_grad * array_api.exp(a)
         ### END YOUR SOLUTION
 
 
@@ -349,14 +365,15 @@ def exp(a):
 class ReLU(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        return  array_api.max(0,a)
+        return array_api.maximum(a, 0)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0]
-        return array_api.array(a>0) * 1 *  out_grad
-        ### END YOUR SOLUTION
+        # input_relu = input.realize_cached_data()
+        input_relu = relu(a).numpy()
+        return out_grad * Tensor(input_relu > 0)
 
 
 def relu(a):
