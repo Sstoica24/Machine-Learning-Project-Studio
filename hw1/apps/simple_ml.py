@@ -3,9 +3,7 @@
 import struct
 import gzip
 import numpy as np
-
 import sys
-
 sys.path.append("python/")
 import needle as ndl
 
@@ -117,11 +115,19 @@ def softmax_loss(Z, y_one_hot):
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
     ### BEGIN YOUR SOLUTION
-    exp_Z = np.exp(Z - np.max(Z, axis=1, keepdims=True)) #max over each col ==> over class
-    softmax_scores = exp_Z / np.sum(exp_Z, axis=1, keepdims =True)
-    batch_size = Z.shape[0]
-    loss = -np.log(softmax_scores[np.arange(batch_size), y])
-    return np.mean(loss)
+    # Calculate the softmax probabilities
+    # import pdb; pdb.set_trace()
+    m = Z.shape[0]
+    exp_Z = ndl.exp(Z)
+    #exp_Z is 2 dim, but summation would return 1D, so we need to make summation 2D
+    softmax_probs = exp_Z / ndl.summation(exp_Z, axes=1).reshape((exp_Z.shape[0], 1))
+    # Compute the loss for each sample in the batch
+    log_t = ndl.log(softmax_probs) * y_one_hot
+    sum_log_t = -ndl.summation(ndl.log(softmax_probs) * y_one_hot, axes=1) / m
+    loss = ndl.summation(sum_log_t)
+    # Average the loss over all samples
+    return loss
+
     ### END YOUR SOLUTION
 
 
