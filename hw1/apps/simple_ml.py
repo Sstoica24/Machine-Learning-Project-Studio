@@ -116,15 +116,15 @@ def softmax_loss(Z, y_one_hot):
     """
     ### BEGIN YOUR SOLUTION
     # Calculate the softmax probabilities
-    # import pdb; pdb.set_trace()
     m = Z.shape[0]
     exp_Z = ndl.exp(Z)
     #exp_Z is 2 dim, but summation would return 1D, so we need to make summation 2D
-    softmax_probs = exp_Z / ndl.summation(exp_Z, axes=1).reshape((exp_Z.shape[0], 1))
+    # based on how the code is written in the backward pass if you don't explicitley call broadcast
+    # then it doesn't know that broadcast was used. 
+    softmax_probs = exp_Z / ndl.summation(exp_Z, axes=(1,)).reshape((exp_Z.shape[0], 1)).broadcast_to((exp_Z.shape) )
     # Compute the loss for each sample in the batch
     log_t = ndl.log(softmax_probs) * y_one_hot
-    sum_log_t = -ndl.summation(ndl.log(softmax_probs) * y_one_hot, axes=1) / m
-    loss = ndl.summation(sum_log_t)
+    loss = -ndl.summation(ndl.log(softmax_probs) * y_one_hot) / m
     # Average the loss over all samples
     return loss
 
@@ -134,20 +134,25 @@ def softmax_loss(Z, y_one_hot):
 def nn_epoch(X, y, W1, W2, lr =0.1, batch=100):
     """Run a single epoch of SGD for a two-layer neural network defined by the
     weights W1 and W2 (with no bias terms):
-        logits = ReLU(X * W1) * W1
+        logits = ReLU(X * W1) * W2
     The function should use the step size lr, and the specified batch size (and
     again, without randomizing the order of X).
 
     Args:
-        X (np.ndarray[np.float32]): 2D input array of size
-            (num_examples x input_dim).
-        y (np.ndarray[np.uint8]): 1D class label array of size (num_examples,)
-        W1 (ndl.Tensor[np.float32]): 2D array of first layer weights, of shape
-            (input_dim, hidden_dim)
-        W2 (ndl.Tensor[np.float32]): 2D array of second layer weights, of shape
-            (hidden_dim, num_classes)
-        lr (float): step size (learning rate) for SGD
-        batch (int): size of SGD mini-batch
+        X and y ARE STILL ARRAYS!!!!!
+            -- X (np.ndarray[np.float32]): 2D input array of size
+                (num_examples x input_dim).
+            -- y (np.ndarray[np.uint8]): 1D class label array of size (num_examples,)
+
+        #THESE ARE, HOWEVER, TENSORS!!!!
+            -- W1 (ndl.Tensor[np.float32]): 2D array of first layer weights, of shape
+                (input_dim, hidden_dim)
+            -- W2 (ndl.Tensor[np.float32]): 2D array of second layer weights, of shape
+                (hidden_dim, num_classes)
+        
+        This is just a float: 
+            -- lr (float): step size (learning rate) for SGD
+            batch (int): size of SGD mini-batch
 
     Returns:
         Tuple: (W1, W2)
@@ -156,42 +161,35 @@ def nn_epoch(X, y, W1, W2, lr =0.1, batch=100):
     """
 
     ### BEGIN YOUR SOLUTION
-    ### BEGIN YOUR CODE
-    num_examples = X.shape[0]
-    num_classes = W2.shape[1]
-
-    #same idea: loop over all examples, but indexing only at 0, batch, 2*batch...
-    #to create the batches for X and y
-    for i in range(0, num_examples, batch):
-        # Select a minibatch
-        X_batch = X[i:i+batch]
-        y_batch = y[i:i+batch]
-
-        # Forward pass
-        Z = np.dot(X_batch, W1)
-        Z_relu = np.maximum(0, Z)  # ReLU activation
-
-        Z_out = np.dot(Z_relu, W2)
-
-        # = = = = = Calculating gradients as given in notebook = = = = = #
-        #note: grad for W2 is identitical to softmax regression case
-        exp_Z_out = np.exp(Z_out - np.max(Z_out, axis=1, keepdims=True))
-        softmax_probs = exp_Z_out / np.sum(exp_Z_out, axis=1, keepdims=True)
-        G2 = softmax_probs - np.eye(num_classes)[y_batch]
-        W2_grad = 1/batch * np.dot(Z_relu.T, G2)
-
-        #compute grad for W1_grad
-        G1 = np.dot(G2, W2.T) * (Z > 0).astype(int)  # ReLU derivative
-        W1_grad = 1/batch * np.dot(X_batch.T, G1)
-
-        # Update weights
-        W1 -= lr * W1_grad 
-        W2 -= lr * W2_grad
-        return (W1, W2)
+    n = X.shape[0]
+    m = W2.shape[1]
+    y_one_hot = np.zeros((n, m))
+    y_one_hot[np.arange(n), y] = 1
+    # the number of steps that you need to take within
+    # X. 
+    steps = n // batch
+    for i in range(steps + 1):
+        start = i * batch
+        # manually ensure that you do not go out of
+        # bounds.
+        end = min(start + batch, n)
+        # we have reached end of X, so we are done
+        if start >= end:
+            break
+        #create batches
+        X_batch = ndl.Tensor(X[start: end])
+        y_batch = ndl.Tensor(y_one_hot[start: end])
+        #calculate the forward pass (logits)
+        Z = ndl.matmul(ndl.relu(ndl.matmul(X_batch, W1)), W2)
+        # loss
+        loss = softmax_loss(Z, y_batch)
+        # backward calls compute_gradient_of_variables which updates grad fields, 
+        loss.backward()
+        # grad
+        W1 = ndl.Tensor(W1.numpy() - lr * W1.grad.numpy())
+        W2 = ndl.Tensor(W2.numpy() - lr * W2.grad.numpy())
+    return (W1, W2)
     ### END YOUR SOLUTION
-
-
-### CODE BELOW IS FOR ILLUSTRATION, YOU DO NOT NEED TO EDIT
 
 
 def loss_err(h, y):

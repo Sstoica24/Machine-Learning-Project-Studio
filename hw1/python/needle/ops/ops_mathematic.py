@@ -7,6 +7,7 @@ from ..autograd import NDArray
 from ..autograd import Op, Tensor, Value, TensorOp
 from ..autograd import TensorTuple, TensorTupleOp
 import numpy
+import needle as ndl
 
 # NOTE: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
@@ -77,14 +78,15 @@ class PowerScalar(TensorOp):
 
     def compute(self, a: NDArray) -> NDArray:
         ### BEGIN YOUR SOLUTION
-        return a ** self.scalar
+        return array_api.power(a, self.scalar)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0]
-        a_grad = out_grad * self.scalar * (a ** (self.scalar - 1))
-        return a_grad
+        grad_a = out_grad * (self.scalar * array_api.power(a, self.scalar - 1))
+        return grad_a
+
         ### END YOUR SOLUTION
 
 
@@ -166,7 +168,6 @@ class Transpose(TensorOp):
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
-        ### BEGIN YOUR SOLUTION
         return out_grad.transpose(self.axes)
         ### END YOUR SOLUTION
 
@@ -181,15 +182,16 @@ class Reshape(TensorOp):
 
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        return a.reshape(self.shape)
+        return array_api.reshape(a, self.shape)
         ### END YOUR SOLUTION
 
-    def gradient(self, out_grad, node):
+    def gradient(self, out_grad, node): #node.shape = (16,) and out_grad = (16,10)
         ### BEGIN YOUR SOLUTION
         # simply reshaping matrix ==> gradient
         # should just be reshaped too was my logic
         # and it turned out to be right!
-        return out_grad.reshape(node.inputs[0].shape)
+        a = node.inputs[0]
+        return reshape(out_grad, a.shape)
         ### END YOUR SOLUTION
 
 
@@ -207,13 +209,7 @@ class BroadcastTo(TensorOp):
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
-        # out_grad = 3x3
-        #[[1. 1. 1.]
-        #[1. 1. 1.]
-        #[1. 1. 1.]]
-        # a = 3x1
         ### BEGIN YOUR SOLUTION
-        #raise NotImplementedError()
         grad_a = out_grad
         output_shape = out_grad.shape
         input_shape = node.inputs[0].shape
@@ -272,9 +268,6 @@ class Summation(TensorOp):
         # broadcast to input shape, so you garentee correct shape
         # since currently all added axis positions will be 1, when
         # input shape requirs different dims. 
-        print( "the gradient shape is", 
-            broadcast_to(reshape(out_grad, grad_shape), a.shape).shape
-        )
         return broadcast_to(reshape(out_grad, grad_shape), a.shape)
         ### END YOUR SOLUTION
 
@@ -303,7 +296,6 @@ class MatMul(TensorOp):
             grad_a = summation(grad_a, tuple(range(len(grad_a.shape) - len(a.shape))))
         if grad_b.shape != b.shape:
             grad_b = summation(grad_b, tuple(range(len(grad_b.shape) - len(b.shape))))
-        #raise NotImplementedError()
         return grad_a, grad_b
         ### END YOUR SOLUTION
 
@@ -336,8 +328,8 @@ class Log(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        input, = node.inputs
-        return out_grad / input
+        a = node.inputs[0]
+        return out_grad / a
         ### END YOUR SOLUTION
 
 
@@ -348,13 +340,13 @@ def log(a):
 class Exp(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        array_api.exp(a)
+        return array_api.exp(a)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0]
-        return out_grad * array_api.exp(a)
+        return out_grad * exp(a)
         ### END YOUR SOLUTION
 
 
@@ -371,7 +363,6 @@ class ReLU(TensorOp):
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         a = node.inputs[0]
-        # input_relu = input.realize_cached_data()
         input_relu = relu(a).numpy()
         return out_grad * Tensor(input_relu > 0)
 
