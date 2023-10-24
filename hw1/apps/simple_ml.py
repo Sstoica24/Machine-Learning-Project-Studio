@@ -191,7 +191,6 @@ def nn_epoch(X, y, W1, W2, lr =0.1, batch=100):
     return (W1, W2)
     ### END YOUR SOLUTION
 
-
 def loss_err(h, y):
     """Helper function to compute both loss and error"""
     y_one_hot = np.zeros((y.shape[0], h.shape[-1]))

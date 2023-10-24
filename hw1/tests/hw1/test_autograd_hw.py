@@ -1,18 +1,14 @@
 import sys
-import pytest
+
 sys.path.append("./python")
 sys.path.append("./apps")
-print("paths:")
-for p in sys.path:
-    print(p)
-
-
 from simple_ml import *
 import numdifftools as nd
 
 import numpy as np
 import mugrade
 import needle as ndl
+
 
 ##############################################################################
 ### TESTS/SUBMISSION CODE FOR forward passes
@@ -475,7 +471,7 @@ def test_power_scalar_backward():
     )
 
 def test_divide_backward():
-     gradient_check(
+    gradient_check(
         ndl.divide,
         ndl.Tensor(np.random.randn(5, 4)),
         ndl.Tensor(5 + np.random.randn(5, 4)),
@@ -504,12 +500,12 @@ def test_matmul_batched_backward():
         ndl.matmul,
         ndl.Tensor(np.random.randn(6, 6, 5, 4)),
         ndl.Tensor(np.random.randn(4, 3)),
-     )
+    )
     gradient_check(
         ndl.matmul,
         ndl.Tensor(np.random.randn(5, 4)),
         ndl.Tensor(np.random.randn(6, 6, 4, 3)),
-     )
+    )
 
 
 def test_reshape_backward():
@@ -518,6 +514,7 @@ def test_reshape_backward():
 
 def test_negate_backward():
     gradient_check(ndl.negate, ndl.Tensor(np.random.randn(5, 4)))
+
 
 def test_transpose_backward():
     gradient_check(ndl.transpose, ndl.Tensor(np.random.randn(3, 5, 4)), axes=(1, 2))
@@ -681,7 +678,7 @@ def test_topo_sort():
         np.asarray([[0.90170084]])
     )
     c1 = 3 * a1 * a1 + 4 * b1 * a1 - a1
-    pytest.set_trace()
+
     soln = np.array(
         [
             np.array([[0.88282157]]),
@@ -730,7 +727,6 @@ def test_topo_sort():
     b = ndl.Tensor(np.asarray([[1.34571691, -0.95584433], [-0.99428573, -0.04017499]]))
     e = (a @ b + b - a) @ a
 
-    #i get an index out of range error here.
     topo_order = np.array([x.numpy() for x in ndl.autograd.find_topo_sort([e])])
 
     soln = np.array(
@@ -785,7 +781,7 @@ def submit_topo_sort():
 
 
 def test_compute_gradient():
-    gradient_check(
+    gradient_check( 
         lambda A, B, C: ndl.summation((A @ B + C) * (A @ B), axes=None),
         ndl.Tensor(np.random.randn(10, 9)),
         ndl.Tensor(np.random.randn(9, 8)),
@@ -826,6 +822,7 @@ def test_compute_gradient():
     assert grad_x3.numpy() == x2_val
     assert grad_x2_x2.numpy() == 2
     assert grad_x2_x3.numpy() == 1
+
 
 
 def submit_compute_gradient():
@@ -1045,5 +1042,3 @@ def submit_nn_epoch_ndl():
     mugrade.submit(np.linalg.norm(W1.numpy()))
     mugrade.submit(np.linalg.norm(W2.numpy()))
     mugrade.submit(loss_err(ndl.Tensor(np.maximum(X @ W1.numpy(), 0)) @ W2, y))
-
-test_broadcast_to_backward()
