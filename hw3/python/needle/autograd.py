@@ -7,18 +7,19 @@ import numpy
 
 from needle import init
 
+#Topological sort: DFS (depth first search). You iterate through the tree depth wise,
+#going to each child starting from the right one. As you go back, you add the 
+#nodes to the visited list. 
+
 # needle version
 LAZY_MODE = False
 TENSOR_COUNTER = 0
 
 # NOTE: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
-
 import numpy as array_api
+
 NDArray = numpy.ndarray
-
-from .backend_selection import array_api, NDArray
-
 
 class Op:
     """Operator definition."""
@@ -290,6 +291,7 @@ class Tensor(Value):
         return data.device
 
     def backward(self, out_grad=None):
+        # import pdb; pdb.set_trace()
         out_grad = (
             out_grad
             if out_grad
@@ -382,7 +384,20 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    for node in reverse_topo_order:
+        # says that we need to store computer results ==> we write it to node.grad
+        # sum_node_list is the function they gave to easily sum nodes
+        node.grad = sum_node_list(node_to_output_grads_list[node])
+        operation = node.op
+        if operation is not None:
+            # grads we want to be a tuple, so we can iterate over it ==> we call gradient_as_tuple
+            # also, grad computer both gradients, so no need to iterate through inpputs and call grad on input[k]
+            grads = operation.gradient_as_tuple(node.grad, node) #3rd TEST FAILS
+            for child, grad in zip(node.inputs, grads): #this allows you to simultaneously iterate through node.inputs and grads
+                if child not in node_to_output_grads_list:
+                    node_to_output_grads_list[child] = [grad]
+                else:
+                    node_to_output_grads_list[child].append(grad)
     ### END YOUR SOLUTION
 
 
@@ -395,14 +410,21 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     sort.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    topo_order =  []
+    visited = []
+    topo_sort_dfs(node_list[0], visited, topo_order)
+    return topo_order
     ### END YOUR SOLUTION
 
 
 def topo_sort_dfs(node, visited, topo_order):
     """Post-order DFS"""
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    if node not in visited:
+        visited.append(node)
+        for child in node.inputs:
+            topo_sort_dfs(child, visited, topo_order)
+        topo_order.append(node) # root
     ### END YOUR SOLUTION
 
 
